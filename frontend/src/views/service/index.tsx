@@ -13,6 +13,7 @@ const columns = [
   "分页上限",
   "消费应用"
 ]
+const cacheColumn = "缓存状态"
 const actions = [
   "提交审批",
   "发布服务",
@@ -40,6 +41,14 @@ const stats = [
 ]
 
 type Row = Record<string, string | number | null>
+
+function cacheBadgeClass(text?: string | null): string {
+  if (!text) return 'badge badge-muted'
+  if (text.includes('失败')) return 'badge badge-danger'
+  if (text.includes('待失效') || text.includes('待重试') || text.includes('待生效')) return 'badge badge-warn'
+  if (text.includes('正常')) return 'badge badge-info'
+  return 'badge badge-muted'
+}
 
 export default function ServiceView() {
   const [rows, setRows] = useState<Row[]>([])
@@ -129,6 +138,7 @@ export default function ServiceView() {
         <thead>
           <tr>
             {columns.map((column) => <th key={column}>{column}</th>)}
+            <th>{cacheColumn}（随缓存规则同步）</th>
             <th>可执行动作</th>
           </tr>
         </thead>
@@ -136,6 +146,7 @@ export default function ServiceView() {
           {rows.map((row) => (
             <tr key={String(row.id)}>
               {columns.map((column) => <td key={column}>{row[column] ?? '—'}</td>)}
+              <td><span className={cacheBadgeClass(row[cacheColumn] as string | null)}>{(row[cacheColumn] as string | null) ?? '—'}</span></td>
               <td className="row-actions">
                 {actions.map((action) => (
                   <button key={action} className="link" type="button" onClick={() => void runAction(action, row)}>
@@ -147,7 +158,7 @@ export default function ServiceView() {
           ))}
           {rows.length === 0 && (
             <tr>
-              <td className="empty-state" colSpan={columns.length + 1}>暂无数据服务发布数据，可先登记数据服务</td>
+              <td className="empty-state" colSpan={columns.length + 2}>暂无数据服务发布数据，可先登记数据服务</td>
             </tr>
           )}
         </tbody>

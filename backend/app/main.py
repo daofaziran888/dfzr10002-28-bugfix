@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.routers import ROUTERS
+from app.runtime.cache_store import cache_runtime
 from app.store import store
 
 app = FastAPI(title="数据分析工作台", version="1.0.0")
@@ -21,6 +22,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+def bootstrap_cache_runtime() -> None:
+    """启动时装配缓存快照并把缓存状态同步给查询模板、数据服务。"""
+    cache_runtime.bootstrap()
+    cache_runtime.refresh_all_downstream()
 
 for module in ROUTERS:
     app.include_router(module.router)

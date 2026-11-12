@@ -1,8 +1,9 @@
-"""数据服务发布业务规则：状态流转、字段校验与筛选口径都收在这里。"""
+"""数据服务发布业务规则：状态流转、字段校验、筛选口径与缓存状态同步都收在这里。"""
 from __future__ import annotations
 
 from typing import Any
 
+from app.runtime.cache_store import cache_runtime
 from app.store import store
 
 MODULE = "service"
@@ -26,12 +27,17 @@ class ServiceService:
             rows = [row for row in rows if keyword in str(row.get("服务编号", ""))]
         if status:
             rows = [row for row in rows if row.get("status") == status]
+        # 别的入口的数据服务详情也要跟着缓存失效更新：缓存状态与停用规则同步。
+        rows = [cache_runtime.downstream_view(MODULE, dict(row)) for row in rows]
         total = len(rows)
         start = max(page - 1, 0) * size
         return rows[start:start + size], total
 
     def get_entry(self, entry_id: int) -> dict[str, Any] | None:
-        return store.find(MODULE, entry_id)
+        entry = store.find(MODULE, entry_id)
+        if entry is None:
+            return None
+        return cache_runtime.downstream_view(MODULE, dict(entry))
 
     def create_entry(self, values: dict[str, Any]) -> tuple[dict[str, Any] | None, list[str]]:
         missing = [field for field in REQUIRED_FIELDS if not str(values.get(field) or "").strip()]
